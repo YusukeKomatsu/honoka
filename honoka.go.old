@@ -1,0 +1,250 @@
+package honoka
+
+import (
+    "crypto/sha256"
+    "errors"
+    "os"
+    "path/filepath"
+    "strconv"
+    "time"
+
+    homedir "github.com/mitchellh/go-homedir"
+    "github.com/mitchellh/mapstructure"
+)
+
+type Client struct {
+    Indexer map[string]Index
+}
+
+type Index struct {
+    Key        string
+    Bucket     string
+    Expiration int64
+}
+
+var (
+    FileNotFound = errors.New("Not found the specified file")
+)
+
+// type UpdateFunc func(args ...interface{}) (interface{}, error)
+
+func New() (*Client, error) {
+    idx, err := getIndexList()
+    if err != nil {
+        return nil, err
+    }
+
+    indexer := make(map[string]Index)
+    for _, i := range idx {
+        // i = Index
+        indexer[i.Key] = i
+    }
+    c := &Client{
+        Indexer: indexer
+    }
+
+    return nil, nil
+}
+
+func (c *Client) Set(key, val string, expire int64) error {
+    if expire, err := c.Expire(key); err != nil {
+        return err
+    }
+
+    if expire == true {
+        // create new bucket
+        bname, err = createNewBucket(bucket, val, expire)
+        if err != nil {
+            return err
+        }
+
+        // replace index
+        i := Index{
+            Key:        key
+            Bucket:     bname
+            Expiration: expire
+        }
+        idx, err := getIndexList()
+        if err != nil {
+            return err
+        }
+        idx = append(idx, i)
+        err = c.setIndexer(idx)
+    }
+
+    return err
+}
+
+func (c *Client) Get(key string) (stiring, error) {
+    expire, err := c.Expire(key)
+    if err != nil {
+        return "", err
+    }
+    if expire {
+        return "", nil
+    }
+    idx := c.Indexer[key]
+    return getBucketData(idx.Bucket)
+}
+
+func (c *Client) Delete(key string) error {
+    idx, ok := c.Indexer[key]
+    if ok == false {
+        return nil
+    }
+    delete(c.Indexer, key)
+    path := getBucketPath(idx.Bucket)
+    if existFile(path) {
+        // delete bucket file
+    }
+    return nil
+}
+
+// func (c *Client) Update(key string, func UpdateFunc, expire int64) (string, error) {
+//     return nil, nil
+// }
+
+func (c *Client) List() ([]Index, error) {
+    idx, err := getIndexList()
+    if err != nil {
+        return nil, err
+    }
+    err = c.setIndexer()
+    if err != nil {
+        return nil, err
+    }
+    return idx, nil  
+}
+
+func (c *Client) Expire(key string) (bool, error) {
+    idx := c.Indexer[key]
+    if idx.Expiration <= time.Now().Unix() {
+        c.Delete(key)
+        return true
+    } else {
+        return false
+    }
+}
+
+func (c *Client) Outdated() ([]string, error) {
+    return nil, nil
+}
+
+func (c *Client) Clean() ([]string, error) {
+    return nil, nil
+}
+
+func (c *Client) setIndexer(indexes *Client.Indexer) error {
+    idxj, err := json.Marshal(indexes)
+    if err != nil {
+        return nil, err
+    }
+
+    path, err := getIndexPath()
+    if err != nil {
+        return nil, err
+    }
+
+    if err = ioutil.WriteFile(path, []byte(idxj), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644); err != nil {
+        return nil, err
+    }
+
+    return nil
+}
+
+func (c *Client) getIndexer(replace bool) (*Client.Indexer, error) {
+    if replace || c.Indexer == nil {
+        path, err := getIndexPath()
+        if err != nil {
+            return
+        }
+
+        idx, err := getIndexList()
+        if err != nil {
+            return nil, err
+        }
+        err = c.setIndexer(idx)
+        if err != nil {
+            return nil, err
+        }
+    }
+    return c.Indexer, nil
+}
+
+func getIndexList() ([]Index, error) {
+    path, err := getIndexPath()
+    if err != nil {
+        return nil, err
+    }
+
+    return nil, nil
+}
+
+
+
+func getIndexPath() (string, error) {
+    home, err := homedir.Dir()
+    if err != nil {
+        return "", err
+    }
+    indexPath := filepath.Join(usr.HomeDir, ".honoka")
+    os.MkdirAll(indexPath, 0700)
+    return indexPath, err
+}
+
+func getIndexesFromFile(path) (string, error) {
+
+}
+
+func getBucketPath(bucket string) (string, error) {
+
+}
+
+func getBucketData(bucket string) (string, error) {
+    path, err := getBucketPath(bucket)
+    if err != nil {
+        return "", err
+    }
+    b, err := ioutil.ReadFile(path)
+    if err != nil {
+        return "", err
+    }
+    return string(b), nil
+}
+
+func deleteBucketData(path string) error {
+
+}
+
+func createBucketName(key string, expire int64) string {
+    k := bucket + '.' + strconv.Itoa64(expire)
+    bytes := sha256.Sum256([]byte(k))
+    return hex.EncodeToString(bytes[:])
+}
+
+func createNewBucket(key, val string, expire int64) (string, error) {
+    exp := createExpiration(expire)
+    bucket := createBucketName(key, exp)
+    path, err := getBucketPath(bucket)
+    if err != nil {
+        return "", err
+    }
+    err = ioutil.WriteFile(path, []byte(val), 0644)
+    return bucket, err
+}
+
+func createExpiration(expire int64) int64 {
+    return time.Now().Unix() + expire
+}
+
+func existFile(file_path string) bool {
+    src, err := os.Stat(file_path)
+    if err != nil {
+        return false
+    }
+
+    if !src.IsDir() {
+        return true
+    }
+    return false
+}
