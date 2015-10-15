@@ -2,16 +2,15 @@ package honoka
 
 import (
     // "crypto/sha256"
-    // "encoding/json"
+    "encoding/json"
     "errors"
     "io/ioutil"
     "os"
     "path/filepath"
     // "strconv"
-    // "time"
+    "time"
 
     homedir "github.com/mitchellh/go-homedir"
-    // "github.com/mitchellh/mapstructure"
 )
 
 type Client struct {
@@ -27,12 +26,13 @@ type Index struct {
 }
 
 var (
-    FileNotFound = errors.New("Not found the specified file")
+    IndexFileNotFound = errors.New("Not found the index file"),
+    CacheIsExpired = errors.New("specified cache is expired")
 )
 
 func New() (*Client, error) {
     idx, err := getIndexList()
-    if err != nil {
+    if  err != nil && err != IndexFileNotFound {
         return nil, err
     }
 
@@ -42,53 +42,113 @@ func New() (*Client, error) {
     return c, nil
 }
 
-func (c *Client) Expire(key string) (bool, error) {
+// func (c *Client) Get(key string, v interface{}) error {
+//     if c.Expire(key) {
+
+//     }
+// }
+
+func (c *Client) GetJson(key string) (string, error) {
+    if c.Expire(key) {
+        return "", 
+    }
+}
+
+// func (c *Client) Set() () {
+    
+// }
+
+// func (c *Client) Delete() () {
+    
+// }
+
+func (c *Client) Expire(key string) bool {
     idx := c.Indexer[key]
     if idx.Expiration <= time.Now().Unix() {
-        c.Delete(key)
+        // c.Delete(key)
         return true
     } else {
         return false
     }
 }
 
+func (c *Client) Outdated() ([]string, error) {
+    return nil, nil
+}
 
-// func (c *Client) setIndexer(indexes IndexList) error {
-//     idxj, err := json.Marshal(indexes)
-//     if err != nil {
-//         return nil, err
-//     }
+func (c *Client) Clean() ([]string, error) {
+    return nil, nil
+}
 
-//     path, err := getIndexPath()
-//     if err != nil {
-//         return nil, err
-//     }
+func (c *Client) List() ([]Index, error) {
+    idx, err := c.getIndexer(true)
+    if err != nil {
+        return nil, err
+    }
+    var list []Index
+    for _, i := range idx {
+        list = append(list, i)
+    }
+    
+    return list, nil  
+}
 
-//     if err = ioutil.WriteFile(path, []byte(idxj), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644); err != nil {
-//         return nil, err
-//     }
+func (c *Client) getIndexer(replace bool) (IndexList, error) {
+    if replace || c.Indexer == nil {
+        idx, err := getIndexList()
+        if err != nil {
+            return nil, err
+        }
+        c.Indexer = idx
+    }
+    return c.Indexer, nil
+}
 
-//     return nil
-// }
+func (c *Client) setIndexer(indexes IndexList) error {
+    idx, err := json.Marshal(indexes)
+    if err != nil {
+        return err
+    }
 
-// func (c *Client) getIndexer(replace bool) (*Client.Indexer, error) {
-//     if replace || c.Indexer == nil {
-//         path, err := getIndexPath()
-//         if err != nil {
-//             return
-//         }
+    if err = updateIndexFile(idx); err != nil {
+        return err
+    }
+    return nil
+}
 
-//         idx, err := getIndexList()
-//         if err != nil {
-//             return nil, err
-//         }
-//         err = c.setIndexer(idx)
-//         if err != nil {
-//             return nil, err
-//         }
-//     }
-//     return c.Indexer, nil
-// }
+func getBucketsDirPath() (string, error) {
+    home, err := homedir.Dir()
+    if err != nil {
+        return "", err
+    }
+    bucketsDir := filepath.Join(home, ".honoka", "buckets")
+    os.MkdirAll(bucketsDir, 0700)
+    return bucketsDir, err
+}
+
+func getBucketPath(bucketName string) (string, error) {
+    bucketsDir, err :=getBucketsDirPath()
+    if err != nil {
+        return "", err
+    }
+    return filepath.Join(bucketsDir, bucketName), nil
+}
+
+func getBucketList() ([]string, error) {
+    bucketsDir, err := getBucketsDirPath()
+    if err != nil {
+        return nil, err
+    }
+    files, err :=  ioutil.ReadDir(bucketsDir))
+    var list []string
+    for _, fi := range files {
+        if !fi.IsDir() {
+            filename := fi.Name()
+            append(list, filename)
+        }
+    }
+    return list, nil
+}
 
 func getIndexPath() (string, error) {
     home, err := homedir.Dir()
@@ -100,10 +160,26 @@ func getIndexPath() (string, error) {
     return filepath.Join(indexDir, "index"), err
 }
 
-func getIndexFromFile() ([]byte, error) {
-    _, err := getIndexPath()
+func getIndexList() (IndexList, error) {
+    b, err := getIndexFromFile()
     if err != nil {
         return nil, err
+    }
+    var list IndexList
+    err = json.Unmarshal(b, &list)
+    if  err != nil {
+        return nil, err
+    }
+    return list, nil
+}
+
+func getIndexFromFile() ([]byte, error) {
+    path, err := getIndexPath()
+    if err != nil {
+        return nil, err
+    }
+    if !fileExists(path) {
+        return nil, IndexFileNotFound
     }
     return ioutil.ReadFile(path);
 }
@@ -113,5 +189,12 @@ func updateIndexFile(indexes []byte) error {
     if err != nil {
         return err
     }
-    return ioutil.ReadFile(path, indexes, 0644);
+    return ioutil.WriteFile(path, indexes, 0644);
 }
+
+func fileExists(filename string) bool {
+    _, err := os.Stat(filename)
+    return err == nil
+}
+
+
