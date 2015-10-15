@@ -11,6 +11,7 @@ import (
     "time"
 
     homedir "github.com/mitchellh/go-homedir"
+    "github.com/mitchellh/mapstructure"
 )
 
 type Client struct {
@@ -26,8 +27,9 @@ type Index struct {
 }
 
 var (
-    IndexFileNotFound = errors.New("Not found the index file"),
-    CacheIsExpired = errors.New("specified cache is expired")
+    BucketFileNotFound = errors.New("Not found specified bucket file"),
+    IndexFileNotFound  = errors.New("Not found specified index file"),
+    CacheIsExpired     = errors.New("specified cache is expired")
 )
 
 func New() (*Client, error) {
@@ -42,16 +44,34 @@ func New() (*Client, error) {
     return c, nil
 }
 
-// func (c *Client) Get(key string, v interface{}) error {
-//     if c.Expire(key) {
-
-//     }
-// }
-
-func (c *Client) GetJson(key string) (string, error) {
+func (c *Client) Get(key string, output interface{}) error {
     if c.Expire(key) {
-        return "", 
+        return CacheIsExpired
     }
+    cache, err := c.GetJson(key)
+    if err != nil {
+        return nil, err
+    }
+    var result interface{}
+    err = json.Unmarshal(cache, &result)
+    if err != nil {
+        return nil, err
+    }
+    err = mapstructure.WeakDecode(result, &output);
+    return err
+}
+
+func (c *Client) GetJson(key string) ([]byte, error) {
+    if c.Expire(key) {
+        return nil, CacheIsExpired
+    }
+
+    idx := c.Indexer[key]
+    cache, err := getCacheFromBucket(idx.Bucket)
+    if err != nil {
+        return nil, err
+    }
+    return cache, nil
 }
 
 // func (c *Client) Set() () {
@@ -127,11 +147,22 @@ func getBucketsDirPath() (string, error) {
 }
 
 func getBucketPath(bucketName string) (string, error) {
-    bucketsDir, err :=getBucketsDirPath()
+    bucketsDir, err := getBucketsDirPath()
     if err != nil {
         return "", err
     }
     return filepath.Join(bucketsDir, bucketName), nil
+}
+
+func getCacheFromBucket(bucketName string) ([]byte, error) {
+    path, err := getBucketPath(bucketName)
+    if err != nil {
+        return "", err
+    }
+    if !fileExists(path) {
+        return nil, BucketFileNotFound
+    }
+    return ioutil.ReadFile(path);
 }
 
 func getBucketList() ([]string, error) {
