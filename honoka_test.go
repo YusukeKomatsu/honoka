@@ -10,7 +10,7 @@ func TestNew(t *testing.T) {
     if err != nil {
         t.Errorf("occurred error when get index path: %#v", err)
     }
-    // fmt.Println(cli)
+    fmt.Println(cli)
 }
 
 func TestGetIndexPath(t *testing.T) {
@@ -18,7 +18,7 @@ func TestGetIndexPath(t *testing.T) {
     if err != nil {
         t.Errorf("occurred error when get index path: %v", err)
     }
-    // fmt.Println(path)
+    fmt.Println(path)
 }
 
 func TestUpdateIndexFile(t *testing.T) {
