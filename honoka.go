@@ -32,6 +32,8 @@ type CleanResult struct {
     Error  error
 }
 
+type UpdateFunc func(args ...interface{}) (interface{}, error)
+
 var (
     BucketFileNotFound = errors.New("Not found specified bucket file")
     IndexFileNotFound  = errors.New("Not found specified index file")
@@ -40,7 +42,7 @@ var (
 
 func New() (*Client, error) {
     idx, err := getIndexList()
-    if  err != nil && err != IndexFileNotFound {
+    if err != nil && err != IndexFileNotFound {
         return nil, err
     }
 
@@ -87,7 +89,7 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
 
     exp := createExpiration(expire)
     name := getBucketName(key, exp)
-    err := createNewBucket(name, val)
+    _, err := createNewBucket(name, val)
     if err != nil {
         return err
     }
@@ -104,6 +106,56 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
     }
 
     return nil
+}
+
+func (c *Client) Update(key string, updater UpdateFunc, expire int64, output interface{}) error {
+    b, err := c.UpdateJson(key, updater, expire)
+
+    if b != nil {
+        var result interface{}
+        e := json.Unmarshal(b, &result)
+        if e != nil {
+            return e
+        }
+
+
+        e = mapstructure.WeakDecode(result, &output);
+        if e != nil {
+            return e
+        }
+    }
+    return err
+}
+
+func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byte, error) {
+    if ! c.Expire(key) {
+        return c.GetJson(key)
+    }
+
+    val, err := updater()
+    if err != nil {
+        return nil, err
+    }
+
+    exp := createExpiration(expire)
+    name := getBucketName(key, exp)
+    jval, err := createNewBucket(name, val)
+    if err != nil {
+        return jval, err
+    }
+    var idx IndexList
+    idx, err = getIndexList()
+    if err != nil {
+        idx = c.Indexer
+    }
+
+    idx[key] = Index{
+        Key:        key,
+        Bucket:     name,
+        Expiration: exp,
+    }
+
+    return jval, nil
 }
 
 func (c *Client) Delete(key string) error {
@@ -162,10 +214,10 @@ func (c *Client) Clean() ([]CleanResult, error) {
 
     var result []CleanResult
     for _, bucket := range list {
-        err = os.Remove(filepath.Join(bucketsDir, bucket))
+        e := os.Remove(filepath.Join(bucketsDir, bucket))
         r := CleanResult{
             Bucket: bucket,
-            Error:  err,
+            Error:  e,
         }
         result = append(result, r)
     }
@@ -253,17 +305,17 @@ func getBucketList() ([]string, error) {
     return list, nil
 }
 
-func createNewBucket(name string, val interface{}) error {
+func createNewBucket(name string, val interface{}) ([]byte, error) {
     jval, err := json.Marshal(val)
     if err != nil {
-        return err
+        return nil, err
     }
     path, err := getBucketPath(name)
     if err != nil {
-        return err
+        return jval, err
     }
     err = ioutil.WriteFile(path, jval, 0644)
-    return err
+    return jval, err
 }
 
 func getBucketName(key string, expiration int64) string {
