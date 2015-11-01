@@ -39,6 +39,7 @@ type CleanResult struct {
 type UpdateFunc func() (interface{}, error)
 
 var (
+    Version = "0.0.1"
     BucketFileNotFound = errors.New("Not found specified bucket file")
     IndexFileNotFound  = errors.New("Not found specified index file")
     CacheIsExpired     = errors.New("specified cache is expired")
