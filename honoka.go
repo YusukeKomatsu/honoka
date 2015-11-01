@@ -13,6 +13,10 @@ import (
 
     homedir "github.com/mitchellh/go-homedir"
     "github.com/mitchellh/mapstructure"
+
+    // for Debug
+    // "fmt"
+    // "github.com/davecgh/go-spew/spew"
 )
 
 type Client struct {
@@ -32,7 +36,7 @@ type CleanResult struct {
     Error  error
 }
 
-type UpdateFunc func(args ...interface{}) (interface{}, error)
+type UpdateFunc func() (interface{}, error)
 
 var (
     BucketFileNotFound = errors.New("Not found specified bucket file")
@@ -42,8 +46,12 @@ var (
 
 func New() (*Client, error) {
     idx, err := getIndexList()
-    if err != nil && err != IndexFileNotFound {
-        return nil, err
+    if err != nil {
+        if err == IndexFileNotFound {
+            idx = nil
+        } else {
+            return nil, err
+        }
     }
 
     c := &Client{
@@ -52,21 +60,21 @@ func New() (*Client, error) {
     return c, nil
 }
 
-func (c *Client) Get(key string, output interface{}) error {
+func (c *Client) Get(key string, output interface{}) (interface{}, error) {
     if c.Expire(key) {
-        return CacheIsExpired
+        return nil, CacheIsExpired
     }
     cache, err := c.GetJson(key)
     if err != nil {
-        return err
+        return nil, err
     }
     var result interface{}
     err = json.Unmarshal(cache, &result)
     if err != nil {
-        return err
+        return nil, err
     }
     err = mapstructure.WeakDecode(result, &output);
-    return err
+    return &output, err
 }
 
 func (c *Client) GetJson(key string) ([]byte, error) {
@@ -96,7 +104,11 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
     var idx IndexList
     idx, err = getIndexList()
     if err != nil {
-        idx = c.Indexer
+        if (err == IndexFileNotFound) {
+            idx = map[string]Index{}
+        } else {
+            return err
+        }
     }
 
     idx[key] = Index{
@@ -104,27 +116,27 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
         Bucket:     name,
         Expiration: exp,
     }
+    c.setIndexer(idx)
 
     return nil
 }
 
-func (c *Client) Update(key string, updater UpdateFunc, expire int64, output interface{}) error {
+func (c *Client) Update(key string, updater UpdateFunc, expire int64, output interface{}) (interface{}, error) {
     b, err := c.UpdateJson(key, updater, expire)
-
     if b != nil {
         var result interface{}
         e := json.Unmarshal(b, &result)
         if e != nil {
-            return e
+            return nil, e
         }
-
 
         e = mapstructure.WeakDecode(result, &output);
         if e != nil {
-            return e
+            return nil, e
         }
     }
-    return err
+
+    return output, err
 }
 
 func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byte, error) {
@@ -154,6 +166,7 @@ func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byt
         Bucket:     name,
         Expiration: exp,
     }
+    c.setIndexer(idx)
 
     return jval, nil
 }
@@ -164,19 +177,33 @@ func (c *Client) Delete(key string) error {
     if err != nil {
         return err
     }
-    
-    err = os.Remove(path)
-    return err
+    if fileExists(path) {
+        err = os.Remove(path)
+        if err != nil {
+            return err
+        }
+    }
+
+    delete(c.Indexer, key)
+    c.setIndexer(c.Indexer)
+    return nil
 }
 
 func (c *Client) Expire(key string) bool {
-    idx := c.Indexer[key]
-    if idx.Expiration <= time.Now().Unix() {
-        c.Delete(key)
+    if nil == c.Indexer {
         return true
-    } else {
-        return false
     }
+
+    idx, exists := c.Indexer[key]
+    if exists {
+        if idx.Expiration <= time.Now().Unix() {
+            c.Delete(key)
+            return true
+        } else {
+            return false
+        }
+    }
+    return true
 }
 
 func (c *Client) Outdated() ([]string, error) {
@@ -257,6 +284,7 @@ func (c *Client) setIndexer(indexes IndexList) error {
     if err = updateIndexFile(idx); err != nil {
         return err
     }
+    c.Indexer = indexes
     return nil
 }
 
