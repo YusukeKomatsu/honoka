@@ -9,8 +9,8 @@ import (
 var (
     getCmd = &cobra.Command{
         Use: "get",
-        Short: "get cached data, use specified key",
-        Long:  "get cached data, use specified key",
+        Short: "Get cached data, use specified key",
+        Long:  "Get cached data, use specified key",
         Run: getCommand,
     }
 )

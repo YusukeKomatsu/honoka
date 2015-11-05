@@ -9,8 +9,8 @@ import (
 var (
     cleanCmd = &cobra.Command{
         Use:   "cleanup",
-        Short: "cleanup unindexed bucket data",
-        Long:  "cleanup unindexed bucket data",
+        Short: "Cleanup no-indexed bucket data",
+        Long:  "Cleanup no-indexed bucket data",
         Run: cleanCommand,
     }
 )

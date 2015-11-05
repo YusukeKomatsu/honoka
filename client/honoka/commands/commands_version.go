@@ -10,8 +10,8 @@ var (
     version = "0.0.1"
     versionCmd = &cobra.Command{
         Use:   "version",
-        Short: "",
-        Long:  "",
+        Short: "Show version",
+        Long:  "Show version",
         Run:   versionCommand,
     }
     versionDetail bool

@@ -9,8 +9,8 @@ import (
 var (
     deleteCmd = &cobra.Command{
         Use:   "delete",
-        Short: "delete cache",
-        Long:  "delete cache",
+        Short: "Delete cache",
+        Long:  "Delete cache",
         Run:   deleteCommand,
     }
 )

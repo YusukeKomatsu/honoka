@@ -9,8 +9,8 @@ import (
 var (
     listCmd = &cobra.Command{
         Use:   "list",
-        Short: "retrive cache index list",
-        Long:  "retrive cache index list (not include cache data). if you get cache, use get method",
+        Short: "Retrive cache index list",
+        Long:  "Retrive cache index list (not include cache data). If you get cache, use get method",
         Run:   listCommand,
     }
 )
