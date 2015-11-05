@@ -19,13 +19,16 @@ import (
     // "github.com/davecgh/go-spew/spew"
 )
 
+// Cache client
 type Client struct {
     // Cache Index list
     Indexer IndexList
 }
 
+// Cache index list
 type IndexList map[string]Index
 
+// Cache index
 type Index struct {
     // The index key.
     Key        string
@@ -37,6 +40,7 @@ type Index struct {
     Expiration int64
 }
 
+// The structure is used when use clean method.
 type CleanResult struct {
     // The bucket name that saved cache data.
     Bucket string
@@ -72,6 +76,12 @@ func New() (*Client, error) {
 }
 
 // Get is used to retrieve a cache by specified key.
+// Example:
+//   cli, err := honoka.New()
+//   var output interface{}
+//   cli.Get("foobar", &output)
+//   // OR
+//   result, err := cli.Get("foobar", &output)
 func (c *Client) Get(key string, output interface{}) (interface{}, error) {
     if c.Expire(key) {
         return nil, CacheIsExpired
@@ -91,6 +101,9 @@ func (c *Client) Get(key string, output interface{}) (interface{}, error) {
 
 // Get is used to retrieve a cache by specified key.
 // Return value is JSON string
+// Example:
+//   cli, err := honoka.New()
+//   result, err := cli.GetJson("foobar")
 func (c *Client) GetJson(key string) ([]byte, error) {
     if c.Expire(key) {
         return nil, CacheIsExpired
@@ -105,6 +118,9 @@ func (c *Client) GetJson(key string) ([]byte, error) {
 }
 
 // Get is used to create a cache if specified key has not used yet.
+// Example:
+//   cli, err := honoka.New()
+//   err := cli.Set("foobar", "fizzbizz", 100)
 func (c *Client) Set(key string, val interface{}, expire int64) error {
     if ! c.Expire(key) {
         return nil
@@ -137,6 +153,14 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
 }
 
 // Update calls the cache update function on the cached data.
+// Get is used to retrieve a cache by specified key.
+// Example:
+//   cli, err := honoka.New()
+//   var output interface{}
+//   f := func() { return "fizzbizz" }
+//   cli.Update("foobar", f, 100, &output)
+//   // OR
+//   result, err := cli.Get("foobar", f, 100, &output)
 func (c *Client) Update(key string, updater UpdateFunc, expire int64, output interface{}) (interface{}, error) {
     b, err := c.UpdateJson(key, updater, expire)
     if b != nil {
@@ -157,6 +181,10 @@ func (c *Client) Update(key string, updater UpdateFunc, expire int64, output int
 
 // Update calls the cache update function on the cached data.
 // Return value is JSON string.
+// Example:
+//   cli, err := honoka.New()
+//   f := func() { return "fizzbizz" }
+//   result, err := cli.UpdateJson("foobar", f, 100)
 func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byte, error) {
     if ! c.Expire(key) {
         return c.GetJson(key)
@@ -190,6 +218,9 @@ func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byt
 }
 
 // Delete is used to delete a cache by specified key.
+// Example:
+//   cli, err := honoka.New()
+//   err = cli.Delete("foobar")
 func (c *Client) Delete(key string) error {
     idx := c.Indexer[key]
     path, err := getBucketPath(idx.Bucket)
@@ -209,6 +240,9 @@ func (c *Client) Delete(key string) error {
 }
 
 // Expire is a predicate which determines if the cache should be updated.
+// Example:
+//   cli, err := honoka.New()
+//   expired := cli.Expire("foobar")
 func (c *Client) Expire(key string) bool {
     if nil == c.Indexer {
         return true
@@ -227,6 +261,9 @@ func (c *Client) Expire(key string) bool {
 }
 
 // Outdated is used to retrive no-indexed bucket.
+// Example:
+//   cli, err := honoka.New()
+//   list, err := cli.Outdated()
 func (c *Client) Outdated() ([]string, error) {
     idx, err := c.getIndexer(true)
     if err != nil {
@@ -251,6 +288,9 @@ func (c *Client) Outdated() ([]string, error) {
 }
 
 // Clean is used to delete no-indexed bucket.
+// Example:
+//   cli, err := honoka.New()
+//   result, err := cli.Clean()
 func (c *Client) Clean() ([]CleanResult, error) {
     bucketsDir, err := getBucketsDirPath()
     if err != nil {
@@ -274,6 +314,9 @@ func (c *Client) Clean() ([]CleanResult, error) {
 }
 
 // List is used to retrive cache indexes.
+// Example:
+//   cli, err := honoka.New()
+//   list, err := cli.List()
 func (c *Client) List() ([]Index, error) {
     idx, err := c.getIndexer(true)
     if err != nil {
