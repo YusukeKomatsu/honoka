@@ -4,12 +4,11 @@ import (
     "fmt"
     "github.com/spf13/cobra"
     "github.com/YusukeKomatsu/honoka"
-    "github.com/davecgh/go-spew/spew"
 )
 
 var (
     cleanCmd = &cobra.Command{
-        Use:   "clean",
+        Use:   "cleanup",
         Short: "cleanup unindexed bucket data",
         Long:  "cleanup unindexed bucket data",
         Run: cleanCommand,
@@ -21,14 +20,21 @@ func cleanCommand(cmd *cobra.Command, args []string) {
     if err != nil {
         Exit(err)
     }
-    result, err := cli.Clean()
+    list, err := cli.Clean()
     if err != nil {
         Exit(err)
     }
-    if result != nil {
-        spew.Dump(result)
+    if list != nil {
+        for _, result := range list {
+            if result.Error != nil {
+                fmt.Printf("%s (Error [%v])\n", result.Bucket, result.Error)
+            } else {
+                fmt.Printf("%s (Success)\n", result.Bucket)
+            }
+        }
+    } else {
+        fmt.Println("Nothing to do")
     }
-    fmt.Println("success")
 }
 
 func init() {

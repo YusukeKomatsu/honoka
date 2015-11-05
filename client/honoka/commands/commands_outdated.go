@@ -4,7 +4,6 @@ import (
     "fmt"
     "github.com/spf13/cobra"
     "github.com/YusukeKomatsu/honoka"
-    "github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -29,7 +28,9 @@ func outdatedCommand(cmd *cobra.Command, args []string) {
     if list == nil {
         fmt.Println("No-indexed cache data is NOTHING.")
     } else {
-        spew.Dump(list);
+        for _, bucket := range list {
+            fmt.Println(bucket)
+        }
     }
     
 }
