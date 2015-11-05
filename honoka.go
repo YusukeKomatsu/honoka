@@ -20,19 +20,28 @@ import (
 )
 
 type Client struct {
+    // Cache Index list
     Indexer IndexList
 }
 
 type IndexList map[string]Index
 
 type Index struct {
+    // The index key.
     Key        string
+
+    // The bucket name that saved cache data.
     Bucket     string
+
+    // The maximum elapsed time since the last file update.
     Expiration int64
 }
 
 type CleanResult struct {
+    // The bucket name that saved cache data.
     Bucket string
+
+    // Error when delete the specified bucket.
     Error  error
 }
 
@@ -45,6 +54,7 @@ var (
     CacheIsExpired     = errors.New("specified cache is expired")
 )
 
+// New is a function for making a new cache
 func New() (*Client, error) {
     idx, err := getIndexList()
     if err != nil {
@@ -61,6 +71,7 @@ func New() (*Client, error) {
     return c, nil
 }
 
+// Get is used to retrieve a cache by specified key.
 func (c *Client) Get(key string, output interface{}) (interface{}, error) {
     if c.Expire(key) {
         return nil, CacheIsExpired
@@ -78,6 +89,8 @@ func (c *Client) Get(key string, output interface{}) (interface{}, error) {
     return &output, err
 }
 
+// Get is used to retrieve a cache by specified key.
+// Return value is JSON string
 func (c *Client) GetJson(key string) ([]byte, error) {
     if c.Expire(key) {
         return nil, CacheIsExpired
@@ -91,6 +104,7 @@ func (c *Client) GetJson(key string) ([]byte, error) {
     return cache, nil
 }
 
+// Get is used to create a cache if specified key has not used yet.
 func (c *Client) Set(key string, val interface{}, expire int64) error {
     if ! c.Expire(key) {
         return nil
@@ -122,6 +136,7 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
     return nil
 }
 
+// Update calls the cache update function on the cached data.
 func (c *Client) Update(key string, updater UpdateFunc, expire int64, output interface{}) (interface{}, error) {
     b, err := c.UpdateJson(key, updater, expire)
     if b != nil {
@@ -140,6 +155,8 @@ func (c *Client) Update(key string, updater UpdateFunc, expire int64, output int
     return output, err
 }
 
+// Update calls the cache update function on the cached data.
+// Return value is JSON string.
 func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byte, error) {
     if ! c.Expire(key) {
         return c.GetJson(key)
@@ -172,6 +189,7 @@ func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byt
     return jval, nil
 }
 
+// Delete is used to delete a cache by specified key.
 func (c *Client) Delete(key string) error {
     idx := c.Indexer[key]
     path, err := getBucketPath(idx.Bucket)
@@ -190,6 +208,7 @@ func (c *Client) Delete(key string) error {
     return nil
 }
 
+// Expire is a predicate which determines if the cache should be updated.
 func (c *Client) Expire(key string) bool {
     if nil == c.Indexer {
         return true
@@ -207,6 +226,7 @@ func (c *Client) Expire(key string) bool {
     return true
 }
 
+// Outdated is used to retrive no-indexed bucket.
 func (c *Client) Outdated() ([]string, error) {
     idx, err := c.getIndexer(true)
     if err != nil {
@@ -230,6 +250,7 @@ func (c *Client) Outdated() ([]string, error) {
     return list, nil
 }
 
+// Clean is used to delete no-indexed bucket.
 func (c *Client) Clean() ([]CleanResult, error) {
     bucketsDir, err := getBucketsDirPath()
     if err != nil {
@@ -252,6 +273,7 @@ func (c *Client) Clean() ([]CleanResult, error) {
     return result, nil
 }
 
+// List is used to retrive cache indexes.
 func (c *Client) List() ([]Index, error) {
     idx, err := c.getIndexer(true)
     if err != nil {
