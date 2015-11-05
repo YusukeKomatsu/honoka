@@ -76,6 +76,7 @@ func New() (*Client, error) {
 }
 
 // Get is used to retrieve a cache by specified key.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   var output interface{}
@@ -118,6 +119,7 @@ func (c *Client) GetJson(key string) ([]byte, error) {
 }
 
 // Get is used to create a cache if specified key has not used yet.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   err := cli.Set("foobar", "fizzbizz", 100)
@@ -154,6 +156,7 @@ func (c *Client) Set(key string, val interface{}, expire int64) error {
 
 // Update calls the cache update function on the cached data.
 // Get is used to retrieve a cache by specified key.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   var output interface{}
@@ -181,6 +184,7 @@ func (c *Client) Update(key string, updater UpdateFunc, expire int64, output int
 
 // Update calls the cache update function on the cached data.
 // Return value is JSON string.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   f := func() { return "fizzbizz" }
@@ -218,6 +222,7 @@ func (c *Client) UpdateJson(key string, updater UpdateFunc, expire int64) ([]byt
 }
 
 // Delete is used to delete a cache by specified key.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   err = cli.Delete("foobar")
@@ -240,6 +245,7 @@ func (c *Client) Delete(key string) error {
 }
 
 // Expire is a predicate which determines if the cache should be updated.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   expired := cli.Expire("foobar")
@@ -261,6 +267,7 @@ func (c *Client) Expire(key string) bool {
 }
 
 // Outdated is used to retrive no-indexed bucket.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   list, err := cli.Outdated()
@@ -314,6 +321,7 @@ func (c *Client) Clean() ([]CleanResult, error) {
 }
 
 // List is used to retrive cache indexes.
+// 
 // Example:
 //   cli, err := honoka.New()
 //   list, err := cli.List()
