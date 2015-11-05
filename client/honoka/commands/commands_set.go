@@ -9,7 +9,7 @@ import (
 
 var (
     setCmd = &cobra.Command{
-        Use:   "set",
+        Use:   "set [key] [value] [expire]",
         Short: "Cache new data",
         Long:  "Cache new data if specified key is not used yet or caches (use specified key) are expired.",
         Run:   setCommand,
