@@ -9,8 +9,8 @@ import (
 var (
     outdatedCmd = &cobra.Command{
         Use:   "outdated",
-        Short: "retrive no-indexed cache data list.",
-        Long:  "retrive no-indexed cache data list. if use clean method, delete these.",
+        Short: "Retrive no-indexed cache data.",
+        Long:  "Retrive no-indexed cache data. If use clean method, delete these.",
         Run:   outdatedCommand,
     }
 )
